@@ -3,8 +3,6 @@
 set -ux
 juju-log "install script"
 
-#RELEASE_CODE=`lsb_release -cs` 
-
 juju-log "adding MapR archive"
 apt-add-repository "deb http://package.mapr.com/releases/v1.1.1/ubuntu/ mapr optional"
 apt-get update
@@ -16,50 +14,56 @@ juju-log "Private IP: ${IP_ADDRESS}"
 # fixing hosts entry added by cloudinit
 sed -i "s/127.0.1.1\(.*${HOSTNAME}.*\)/${IP_ADDRESS}\1/" /etc/hosts
 
-NAMENODE="${HOSTNAME}"
-juju-log "Namenode: ${NAMENODE}"
-echo debconf hadoop/namenode string ${NAMENODE}| /usr/bin/debconf-set-selections
-
-JOBTRACKER="${HOSTNAME}"
-juju-log "Jobtracker: ${JOBTRACKER}"
-echo debconf hadoop/jobtracker string ${JOBTRACKER}| /usr/bin/debconf-set-selections
-
-HDFSDATADIR="/var/lib/hadoop-0.20/dfs/data"
-juju-log "HDFS Dir: ${HDFSDATADIR}"
-echo debconf hadoop/hdfsdatadir string ${HDFSDATADIR}| /usr/bin/debconf-set-selections
-
 juju-log "installing packages"
-apt-get install -y hadoop-0.20-namenode
-apt-get install -y hadoop-0.20-jobtracker
+export DEBIAN_FRONTEND=noninteractive
 
-# first node
-apt-get install mapr-cldb mapr-fileserver mapr-jobtracker mapr-nfs mapr-tasktracker mapr-webserver mapr-zookeeper
+MAPR_MASTER_PACKAGES="mapr-cldb mapr-jobtracker mapr-nfs mapr-webserver"
+MAPR_ZK_PACKAGES="mapr-zookeeper"
+MAPR_NODE_PACKAGES="mapr-fileserver mapr-tasktracker"
+apt-get -y install -qq $MAPR_MASTER_PACKAGES $MAPR_ZK_PACKAGES $MAPR_NODE_PACKAGES
 
-# nodes 2-3
-apt-get install mapr-fileserver mapr-tasktracker mapr-zookeeper
+# first node... "master?"
+#apt-get -y install -qq $MAPR_MASTER_PACKAGES $MAPR_ZK_PACKAGES $MAPR_NODE_PACKAGES
+# nodes 2-3... "zk?"
+#apt-get -y install -qq $MAPR_ZK_PACKAGES $MAPR_NODE_PACKAGES
+# nodes 4+... "node?"
+#apt-get -y install -qq $MAPR_NODE_PACKAGES
 
-# nodes 4+
-apt-get install mapr-fileserver mapr-tasktracker
+#should totally be separate services
+# cldb / master
+# zk
+# zk
+# zk
+# node
+# node
+# node
 
+# or.... just have master and slave
+# and automatically detect zk when adding slaves...?
+# i.e., every slave install zk, but only starts if master tells it to
 
-/opt/mapr/server/configure.sh -C <node 1> -Z <node 1>,<node 2>,<node 3>
-/opt/mapr/server/disksetup -F /tmp/disks.txt
+mapr_already_configured() {
+  false
+}
+configure_mapr() {
+  MAPR_SERVER=/opt/mapr/server
 
+  #/opt/mapr/server/configure.sh -C <node 1> -Z <node 1>,<node 2>,<node 3>
+  $MAPR_SERVER/configure.sh -C <node 1> -Z <node 1>,<node 2>,<node 3>
 
-# set bind-address...
-#sed -i 's###' /etc/hadoop/conf/hadoop-env.sh
-# -or-
-#echo "export HADOOP_OPTS=-Djava.net.preferIPv4Stack=true" >> /etc/hadoop/conf/hadoop-env.sh
+  # move to configure.yaml
+  #/opt/mapr/server/disksetup -F /tmp/disks.txt
+  $MAPR_SERVER/disksetup -F /tmp/disks.txt
+
+  # set bind-address...
+  #sed -i 's###' /etc/hadoop/conf/hadoop-env.sh
+  # -or-
+  #echo "export HADOOP_OPTS=-Djava.net.preferIPv4Stack=true" >> /etc/hadoop/conf/hadoop-env.sh
+
+}
+mapr_already_configured || configure_mapr
 
 if [ -x /usr/bin/open-port ];then
    open-port 50010/TCP
-   open-port 50020/TCP
-   open-port 50030/TCP
-   open-port 50105/TCP
-   open-port 54310/TCP
-   open-port 54311/TCP
-   open-port 50060/TCP
-   open-port 50070/TCP
-   open-port 50075/TCP
-   open-port 50090/TCP
 fi
+
