@@ -1,0 +1,13 @@
+options:
+  data_seed:
+    type: string
+    default: 
+    description: URL for data seed
+  job:
+    type: string
+    default: 
+    description: job execution string
+  job_jar:
+    type: string
+    default: 
+    description: URL or filepath for the jar containing the job code

@@ -1,0 +1,7 @@
+name: mapr-master
+revision: 1
+summary: Master Node for MapR
+description: master node for mapr
+provides:
+  mapr-master:
+    interface: mapr-master
