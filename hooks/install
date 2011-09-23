@@ -1,81 +1,55 @@
 #!/bin/bash
-# Here do anything needed to install the service
-# i.e. apt-get install -y foo  or  bzr branch http://myserver/mycode /srv/webroot
-
-
-############################################################################################################
-# Set debugging
-############################################################################################################
 
 set -ux
 juju-log "install script"
 
+#RELEASE_CODE=`lsb_release -cs` 
 
-############################################################################################################
-# Add the repositories
-############################################################################################################
-
-export TERM=linux
-
-#RELEASE_CODE=`lsb_release -a | awk '/Codename/ { print $2 }'`
-
-# Add the Hadoop PPA
-juju-log "Adding ppa"
-apt-add-repository ppa:mark-mims/hadoop
-#apt-add-repository ppa:canonical-sig/thirdparty
-juju-log "updating cache"
+juju-log "adding MapR archive"
+apt-add-repository "deb http://package.mapr.com/releases/v1.1.1/ubuntu/ mapr optional"
 apt-get update
 
-
-############################################################################################################
-# Calculate our IP Address
-############################################################################################################
-
-juju-log "calculating ip"
 HOSTNAME=`hostname -f`
 IP_ADDRESS=`hostname -f | xargs dig +short`
 juju-log "Private IP: ${IP_ADDRESS}"
 
-# only necessary on oneiric but shouldn't break anything elsewhere
-#sed -i "s/\(.*${HOSTNAME}.*\)/#\1/" /etc/hosts
+# fixing hosts entry added by cloudinit
 sed -i "s/127.0.1.1\(.*${HOSTNAME}.*\)/${IP_ADDRESS}\1/" /etc/hosts
 
-
-
-############################################################################################################
-# Preseed our Namenode, Jobtracker and HDFS Data directory
-############################################################################################################
-
 NAMENODE="${HOSTNAME}"
-JOBTRACKER="${HOSTNAME}"
-HDFSDATADIR="/var/lib/hadoop-0.20/dfs/data"
 juju-log "Namenode: ${NAMENODE}"
-juju-log "Jobtracker: ${JOBTRACKER}"
-juju-log "HDFS Dir: ${HDFSDATADIR}"
-
 echo debconf hadoop/namenode string ${NAMENODE}| /usr/bin/debconf-set-selections
+
+JOBTRACKER="${HOSTNAME}"
+juju-log "Jobtracker: ${JOBTRACKER}"
 echo debconf hadoop/jobtracker string ${JOBTRACKER}| /usr/bin/debconf-set-selections
+
+HDFSDATADIR="/var/lib/hadoop-0.20/dfs/data"
+juju-log "HDFS Dir: ${HDFSDATADIR}"
 echo debconf hadoop/hdfsdatadir string ${HDFSDATADIR}| /usr/bin/debconf-set-selections
-
-
-############################################################################################################
-# Install the packages
-############################################################################################################
 
 juju-log "installing packages"
 apt-get install -y hadoop-0.20-namenode
 apt-get install -y hadoop-0.20-jobtracker
 
+# first node
+apt-get install mapr-cldb mapr-fileserver mapr-jobtracker mapr-nfs mapr-tasktracker mapr-webserver mapr-zookeeper
+
+# nodes 2-3
+apt-get install mapr-fileserver mapr-tasktracker mapr-zookeeper
+
+# nodes 4+
+apt-get install mapr-fileserver mapr-tasktracker
+
+
+/opt/mapr/server/configure.sh -C <node 1> -Z <node 1>,<node 2>,<node 3>
+/opt/mapr/server/disksetup -F /tmp/disks.txt
+
 
 # set bind-address...
 #sed -i 's###' /etc/hadoop/conf/hadoop-env.sh
+# -or-
 #echo "export HADOOP_OPTS=-Djava.net.preferIPv4Stack=true" >> /etc/hadoop/conf/hadoop-env.sh
-
-
-
-############################################################################################################
-# Open the necessary ports
-############################################################################################################
 
 if [ -x /usr/bin/open-port ];then
    open-port 50010/TCP
