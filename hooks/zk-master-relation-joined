@@ -4,6 +4,10 @@ set -x
 
 juju-log "joined script started"
 
+reconfigure_zk() {
+}
+reconfigure_zk
+
 reconfigure_mapr() {
   MAPR_SERVER=/opt/mapr/server
 }

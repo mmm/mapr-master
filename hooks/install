@@ -29,18 +29,16 @@ apt-get -y install -qq $MAPR_MASTER_PACKAGES $MAPR_ZK_PACKAGES $MAPR_NODE_PACKAG
 # nodes 4+... "node?"
 #apt-get -y install -qq $MAPR_NODE_PACKAGES
 
-#should totally be separate services
-# cldb / master
-# zk
-# zk
-# zk
-# node
-# node
-# node
+# or.... just let slaves implement the zk-repl relation
+# and add them manually
 
-# or.... just have master and slave
-# and automatically detect zk when adding slaves...?
-# i.e., every slave install zk, but only starts if master tells it to
+zk_already_configured() {
+  false
+}
+configure_zk() {
+}
+zk_already_configured || configure_zk
+
 
 mapr_already_configured() {
   false

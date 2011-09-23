@@ -5,3 +5,5 @@ description: master node for mapr
 provides:
   mapr-master:
     interface: mapr-master
+  zk-master:
+    interface: zk-master
